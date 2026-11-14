@@ -1,6 +1,7 @@
 mod app;
 mod error;
 mod state;
+mod vertex;
 
 use anyhow::Context;
 use winit::event_loop::{ControlFlow, EventLoop};

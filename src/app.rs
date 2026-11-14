@@ -20,7 +20,7 @@ impl ApplicationHandler for App {
 	fn resumed(&mut self, event_loop: &ActiveEventLoop) {
 		let window_attributes = WindowAttributes::default()
 			.with_title("terrain-test")
-			.with_inner_size(PhysicalSize::new(800, 600))
+			.with_inner_size(PhysicalSize::new(800, 800))
 			.with_resizable(false);
 
 		let window = Arc::new(

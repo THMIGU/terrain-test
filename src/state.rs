@@ -1,9 +1,25 @@
 use std::sync::Arc;
 
 use anyhow::{Context, bail};
+use wgpu::util::DeviceExt;
 use winit::{event_loop::ActiveEventLoop, keyboard::KeyCode, window::Window};
 
-use crate::error::AppResult;
+use crate::{error::AppResult, vertex::Vertex};
+
+const VERTICES: &[Vertex] = &[
+	Vertex {
+		position: [0.0, 0.5, 0.0],
+		color: [1.0, 0.0, 0.0],
+	},
+	Vertex {
+		position: [-0.5, -0.5, 0.0],
+		color: [0.0, 1.0, 0.0],
+	},
+	Vertex {
+		position: [0.5, -0.5, 0.0],
+		color: [0.0, 0.0, 1.0],
+	},
+];
 
 pub struct State {
 	surface: wgpu::Surface<'static>,
@@ -11,8 +27,10 @@ pub struct State {
 	queue: wgpu::Queue,
 	config: wgpu::SurfaceConfiguration,
 	is_surface_configured: bool,
-	render_pipeline: wgpu::RenderPipeline,
 	window: Arc<Window>,
+	render_pipeline: wgpu::RenderPipeline,
+	vertex_buffer: wgpu::Buffer,
+	num_vertices: u32,
 }
 
 impl State {
@@ -73,9 +91,13 @@ impl State {
 			color_space: wgpu::SurfaceColorSpace::Auto,
 		};
 
-		let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-			label: Some("Shader"),
-			source: wgpu::ShaderSource::Wgsl(include_str!("shaders/shader.wgsl").into()),
+		let vertex_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+			label: Some("Vertex Shader"),
+			source: wgpu::ShaderSource::Wgsl(include_str!("shaders/vertex.wgsl").into()),
+		});
+		let fragment_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+			label: Some("Fragment Shader"),
+			source: wgpu::ShaderSource::Wgsl(include_str!("shaders/fragment.wgsl").into()),
 		});
 
 		let render_pipeline_layout =
@@ -89,13 +111,13 @@ impl State {
 			label: Some("Render Pipeline"),
 			layout: Some(&render_pipeline_layout),
 			vertex: wgpu::VertexState {
-				module: &shader,
+				module: &vertex_shader,
 				entry_point: Some("vs_main"),
-				buffers: &[],
+				buffers: &[Some(Vertex::desc())],
 				compilation_options: wgpu::PipelineCompilationOptions::default(),
 			},
 			fragment: Some(wgpu::FragmentState {
-				module: &shader,
+				module: &fragment_shader,
 				entry_point: Some("fs_main"),
 				targets: &[Some(wgpu::ColorTargetState {
 					format: config.format,
@@ -123,14 +145,24 @@ impl State {
 			cache: None,
 		});
 
+		let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+			label: Some("Vertex Buffer"),
+			contents: bytemuck::cast_slice(VERTICES),
+			usage: wgpu::BufferUsages::VERTEX,
+		});
+
+		let num_vertices = VERTICES.len() as u32;
+
 		Ok(Self {
 			surface,
 			device,
 			queue,
 			config,
 			is_surface_configured: false,
-			render_pipeline,
 			window,
+			render_pipeline,
+			vertex_buffer,
+			num_vertices,
 		})
 	}
 
@@ -207,7 +239,8 @@ impl State {
 			});
 
 			render_pass.set_pipeline(&self.render_pipeline);
-			render_pass.draw(0..3, 0..1);
+			render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+			render_pass.draw(0..self.num_vertices, 0..1);
 		}
 
 		self.queue
