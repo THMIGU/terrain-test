@@ -1,3 +1,3 @@
 use anyhow::Result;
 
-pub type AppError<T = ()> = Result<T>;
+pub type AppResult<T = ()> = Result<T>;

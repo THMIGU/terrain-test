@@ -10,7 +10,10 @@ wgpu = {
 	default-features = false,
 	features = ["vulkan", "metal", "wgsl"]
 }
+pollster = "1.0.1"
 anyhow = "1.0.104"
+log = "0.4.35"
+env_logger = "0.11.11"
 
 [profile.release]
 debug = false
