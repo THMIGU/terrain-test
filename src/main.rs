@@ -1,5 +1,6 @@
 mod app;
 mod assets;
+mod camera;
 mod error;
 mod shaders;
 mod state;
