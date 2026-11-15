@@ -14,6 +14,12 @@ bytemuck = {
 	version = "1.25.2",
 	features = ["derive"]
 }
+image = {
+	version = "0.25.10",
+	default-features = false,
+	features = ["png"],
+}
+rust-embed = "8.14.0"
 pollster = "1.0.1"
 glam = "0.34.3"
 anyhow = "1.0.104"

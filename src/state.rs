@@ -4,24 +4,28 @@ use anyhow::{Context, bail};
 use wgpu::util::DeviceExt;
 use winit::{event_loop::ActiveEventLoop, keyboard::KeyCode, window::Window};
 
-use crate::{error::AppResult, vertex::Vertex};
+use crate::{assets::texture::Texture, error::AppResult, shaders, vertex::Vertex};
 
 const VERTICES: &[Vertex] = &[
 	Vertex {
-		position: [0.0, 0.5, 0.0],
-		color: [1.0, 0.0, 0.0],
+		position: [-0.5, 0.5, 0.0],
+		tex_coords: [0.0, 0.0],
 	},
 	Vertex {
-		position: [-0.5, -0.5, 0.0],
-		color: [0.0, 1.0, 0.0],
+		position: [0.5, 0.5, 0.0],
+		tex_coords: [1.0, 0.0],
 	},
 	Vertex {
 		position: [0.5, -0.5, 0.0],
-		color: [0.0, 0.0, 1.0],
+		tex_coords: [1.0, 1.0],
+	},
+	Vertex {
+		position: [-0.5, -0.5, 0.0],
+		tex_coords: [0.0, 1.0],
 	},
 ];
 
-const INDICES: &[u16] = &[0, 1, 2];
+const INDICES: &[u16] = &[0, 2, 1, 0, 3, 2];
 
 pub struct State {
 	surface: wgpu::Surface<'static>,
@@ -32,9 +36,9 @@ pub struct State {
 	window: Arc<Window>,
 	render_pipeline: wgpu::RenderPipeline,
 	vertex_buffer: wgpu::Buffer,
-	num_vertices: u32,
 	index_buffer: wgpu::Buffer,
 	num_indices: u32,
+	diffuse_bind_group: wgpu::BindGroup,
 }
 
 impl State {
@@ -95,19 +99,55 @@ impl State {
 			color_space: wgpu::SurfaceColorSpace::Auto,
 		};
 
-		let vertex_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-			label: Some("Vertex Shader"),
-			source: wgpu::ShaderSource::Wgsl(include_str!("shaders/vertex.wgsl").into()),
+		let texture = Texture::from_file(&device, &queue, "potato.png", Some("Diffuse Texture"))
+			.context("Failed to load texture")?;
+
+		let texture_bind_group_layout =
+			device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+				entries: &[
+					wgpu::BindGroupLayoutEntry {
+						binding: 0,
+						visibility: wgpu::ShaderStages::FRAGMENT,
+						ty: wgpu::BindingType::Texture {
+							multisampled: false,
+							view_dimension: wgpu::TextureViewDimension::D2,
+							sample_type: wgpu::TextureSampleType::Float {
+								filterable: true,
+							},
+						},
+						count: None,
+					},
+					wgpu::BindGroupLayoutEntry {
+						binding: 1,
+						visibility: wgpu::ShaderStages::FRAGMENT,
+						ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+						count: None,
+					},
+				],
+				label: Some("Texture Bind Group Layout"),
+			});
+		let diffuse_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+			layout: &texture_bind_group_layout,
+			entries: &[
+				wgpu::BindGroupEntry {
+					binding: 0,
+					resource: wgpu::BindingResource::TextureView(&texture.view),
+				},
+				wgpu::BindGroupEntry {
+					binding: 1,
+					resource: wgpu::BindingResource::Sampler(&texture.sampler),
+				},
+			],
+			label: Some("Diffuse Bind Group"),
 		});
-		let fragment_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-			label: Some("Fragment Shader"),
-			source: wgpu::ShaderSource::Wgsl(include_str!("shaders/fragment.wgsl").into()),
-		});
+
+		let vertex_shader = shaders::create_vertex_shader(&device);
+		let fragment_shader = shaders::create_fragment_shader(&device);
 
 		let render_pipeline_layout =
 			device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
 				label: Some("Render Pipeline Layout"),
-				bind_group_layouts: &[],
+				bind_group_layouts: &[Some(&texture_bind_group_layout)],
 				immediate_size: 0,
 			});
 
@@ -160,7 +200,6 @@ impl State {
 			usage: wgpu::BufferUsages::INDEX,
 		});
 
-		let num_vertices = VERTICES.len() as u32;
 		let num_indices = INDICES.len() as u32;
 
 		Ok(Self {
@@ -172,9 +211,9 @@ impl State {
 			window,
 			render_pipeline,
 			vertex_buffer,
-			num_vertices,
 			index_buffer,
 			num_indices,
+			diffuse_bind_group,
 		})
 	}
 
@@ -251,6 +290,8 @@ impl State {
 			});
 
 			render_pass.set_pipeline(&self.render_pipeline);
+
+			render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
 
 			render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
 			render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);

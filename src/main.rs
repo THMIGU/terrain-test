@@ -1,5 +1,7 @@
 mod app;
+mod assets;
 mod error;
+mod shaders;
 mod state;
 mod vertex;
 
