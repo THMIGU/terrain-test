@@ -2,6 +2,7 @@ mod app;
 mod assets;
 mod camera;
 mod error;
+mod render;
 mod shaders;
 mod state;
 mod vertex;

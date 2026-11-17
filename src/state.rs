@@ -15,24 +15,28 @@ use crate::{
 
 const VERTICES: &[Vertex] = &[
 	Vertex {
-		position: [-0.5, 0.5, 0.0],
+		position: [-1.0, 1.0, 0.0],
 		tex_coords: [0.0, 0.0],
 	},
 	Vertex {
-		position: [0.5, 0.5, 0.0],
+		position: [1.0, 1.0, 0.0],
 		tex_coords: [1.0, 0.0],
 	},
 	Vertex {
-		position: [0.5, -0.5, 0.0],
+		position: [1.0, -1.0, 0.0],
 		tex_coords: [1.0, 1.0],
 	},
 	Vertex {
-		position: [-0.5, -0.5, 0.0],
+		position: [-1.0, -1.0, 0.0],
 		tex_coords: [0.0, 1.0],
 	},
 ];
 
-const INDICES: &[u16] = &[0, 2, 1, 0, 3, 2];
+#[rustfmt::skip]
+const INDICES: &[u16] = &[
+	0, 2, 1,
+	0, 3, 2
+];
 
 pub struct State {
 	surface: wgpu::Surface<'static>,
